@@ -4,26 +4,27 @@ Microservices demo: project containing the step-by-step instructions to recreate
 1) set up the configuration store
 ---------------------------------
 
-mkdir C:\code\deors.demos\microservices\deors.demos.microservices.configstore
+create and change to a directory for the project
 
-cd C:\code\deors.demos\microservices\deors.demos.microservices.configstore
+    mkdir C:\code\deors.demos\microservices\deors.demos.microservices.configstore
+    cd C:\code\deors.demos\microservices\deors.demos.microservices.configstore
 
-npp application.properties
+create file application.properties
 
 	debug = true
 	spring.jpa.generate-ddl = true
 
-npp eureka-service.properties
+create file eureka-service.properties
 	
     server.port = ${PORT:7878}
 	eureka.client.register-with-eureka = false
 	eureka.client.fetch-registry = false
 
-npp hystrix-dashboard.properties
+create file hystrix-dashboard.properties
 
 	server.port = ${PORT:7979}
 
-npp bookrec-service.properties
+create file bookrec-service.properties
 
 	server.port = ${PORT:8080}
 	eureka.client.serviceUrl.defaultZone = http://${EUREKA_HOST:localhost}:${EUREKA_PORT:7878}/eureka/
@@ -46,55 +47,66 @@ go to https://start.spring.io/
 
 create project
 
-	group
-		deors.demos.microservices
-	artifact
-		deors.demos.microservices.configservice
-	depedencies
-		config server
+	group: deors.demos.microservices
+	artifact: deors.demos.microservices.configservice
+	depedencies: config server
 
 extract zip to
 
 	C:\code\deors.demos\microservices
 
-cd C:\code\deors.demos\microservices\deors.demos.microservices.configservice
+change into extracted directory
 
-ensure config store location is properly set
+    cd C:\code\deors.demos\microservices\deors.demos.microservices.configservice
 
-npp src\main\resources\application.properties
+ensure config store location is properly set;
+edit src\main\resources\application.properties
 
 	server.port = ${PORT:8888}
 	spring.cloud.config.server.git.uri = ${CONFIG_VOL:https://github.com/deors/deors.demos.microservices.configstore.git}
 
-configure config server to start automatically
-
-npp src\main\java\deors\demos\microservices\Application.java
+configure config server to start automatically;
+edit src\main\java\deors\demos\microservices\Application.java
 
 add class annotation
 
 	@org.springframework.cloud.config.server.EnableConfigServer
 
-3)
+3) set up the Eureka server
+---------------------------
+
 go to https://start.spring.io/
+
 create project
-	group
-		deors.demos.microservices
-	artifact
-		deors.demos.microservices.eurekaservice
-	depedencies
-		eureka server
+
+	group: deors.demos.microservices
+	artifact: deors.demos.microservices.eurekaservice
+	depedencies:
+        eureka server
 		config client
+
 extract zip to
+
 	C:\code\deors.demos\microservices
-cd C:\code\deors.demos\microservices\deors.demos.microservices.eurekaservice
+
+change into extracted directory
+
+    cd C:\code\deors.demos\microservices\deors.demos.microservices.eurekaservice
+
 ensure config service is used by moving props to bootstrap phase
-ren src\main\resources\application.properties bootstrap.properties
-npp src\main\resources\bootstrap.properties
+
+    ren src\main\resources\application.properties bootstrap.properties
+
+edit src\main\resources\bootstrap.properties
+
 	spring.application.name = eureka-service
 	spring.cloud.config.uri = http://${CONFIG_HOST:localhost}:${CONFIG_PORT:8888}
-configure eureka server to start automatically
+
+configure eureka server to start automatically;
 npp src\main\java\deors\demos\microservices\Application.java
+
 add class annotation
+
 	@org.springframework.cloud.netflix.eureka.server.EnableEurekaServer
 
 4)
