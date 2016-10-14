@@ -1,48 +1,77 @@
 # deors.demos.microservices.docs
 Microservices demo: project containing the step-by-step instructions to recreate the demo
 
-1)
+1) set up the configuration store
+---------------------------------
+
 mkdir C:\code\deors.demos\microservices\deors.demos.microservices.configstore
+
 cd C:\code\deors.demos\microservices\deors.demos.microservices.configstore
+
 npp application.properties
+
 	debug = true
 	spring.jpa.generate-ddl = true
+
 npp eureka-service.properties
-	server.port = ${PORT:7878}
+	
+    server.port = ${PORT:7878}
 	eureka.client.register-with-eureka = false
 	eureka.client.fetch-registry = false
+
 npp hystrix-dashboard.properties
+
 	server.port = ${PORT:7979}
+
 npp bookrec-service.properties
+
 	server.port = ${PORT:8080}
 	eureka.client.serviceUrl.defaultZone = http://${EUREKA_HOST:localhost}:${EUREKA_PORT:7878}/eureka/
+
 initialise the Git repository
+
 	git init
 	git add .
 	git commit -m "initial configuration"
-publish it online (i.e. GitHub)
+
+publish it online (i.e. GitHub, replace with your own repository)
+
 	git remote add origin https://github.com/deors/deors.demos.microservices.configstore.git
 	git push origin master --force
 
-2)
+2) set up the configuration server
+----------------------------------
+
 go to https://start.spring.io/
+
 create project
+
 	group
 		deors.demos.microservices
 	artifact
 		deors.demos.microservices.configservice
 	depedencies
 		config server
+
 extract zip to
+
 	C:\code\deors.demos\microservices
+
 cd C:\code\deors.demos\microservices\deors.demos.microservices.configservice
+
 ensure config store location is properly set
+
 npp src\main\resources\application.properties
+
 	server.port = ${PORT:8888}
 	spring.cloud.config.server.git.uri = ${CONFIG_VOL:https://github.com/deors/deors.demos.microservices.configstore.git}
+
 configure config server to start automatically
+
 npp src\main\java\deors\demos\microservices\Application.java
+
 add class annotation
+
 	@org.springframework.cloud.config.server.EnableConfigServer
 
 3)
