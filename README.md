@@ -6,8 +6,8 @@ Microservices demo: repository containing the step-by-step instructions to recre
 
 create and change to a directory for the project
 
-    mkdir C:\code\deors.demos\microservices\deors.demos.microservices.configstore
-    cd C:\code\deors.demos\microservices\deors.demos.microservices.configstore
+    mkdir %HOME%\microservices\deors.demos.microservices.configstore
+    cd %HOME%\microservices\deors.demos.microservices.configstore
 
 create file application.properties
 
@@ -53,11 +53,11 @@ create project
 
 extract zip to
 
-	C:\code\deors.demos\microservices
+	%HOME%\microservices
 
 change into extracted directory
 
-    cd C:\code\deors.demos\microservices\deors.demos.microservices.configservice
+    cd %HOME%\microservices\deors.demos.microservices.configservice
 
 ensure config store location is properly set;
 edit src\main\resources\application.properties
@@ -87,11 +87,11 @@ create project
 
 extract zip to
 
-	C:\code\deors.demos\microservices
+	%HOME%\microservices
 
 change into extracted directory
 
-    cd C:\code\deors.demos\microservices\deors.demos.microservices.eurekaservice
+    cd %HOME%\microservices\deors.demos.microservices.eurekaservice
 
 ensure config service is used by moving props to bootstrap phase
 
@@ -125,11 +125,11 @@ create project
 
 extract zip to
 
-	C:\code\deors.demos\microservices
+	%HOME%\microservices
 
 change into extracted directory
 
-    cd C:\code\deors.demos\microservices\deors.demos.microservices.hystrixdashboard
+    cd %HOME%\microservices\deors.demos.microservices.hystrixdashboard
 
 ensure config service is used by moving props to bootstrap phase
 
@@ -168,11 +168,11 @@ create project
 
 extract zip to
 
-	C:\code\deors.demos\microservices
+	%HOME%\microservices
 
 change into extracted directory
 
-    cd C:\code\deors.demos\microservices\deors.demos.microservices.bookrecservice
+    cd %HOME%\microservices\deors.demos.microservices.bookrecservice
 
 ensure config service is used by moving props to bootstrap phase
 
@@ -242,15 +242,15 @@ add some test data (in IDE, create src/main/resources/import.sql)
 
 configure pom.xml and Dockerfile to allow each service to run as a Docker image
 
-    cd C:\code\deors.demos\microservices\deors.demos.microservices.bookrecservice
+    cd %HOME%\microservices\deors.demos.microservices.bookrecservice
 
 edit pom.xml
 
-add inside <properties>
+add inside &lt;properties&gt;
 
 	        <docker.image.prefix>deors</docker.image.prefix>
 
-add inside <build><plugins>
+add inside &lt;build&gt;&lt;plugins&gt;
 
 	            <plugin>
 	                <groupId>com.spotify</groupId>
