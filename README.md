@@ -1,11 +1,11 @@
 # deors.demos.microservices.docs
 Microservices demo: repository containing the step-by-step instructions to recreate the demo
 
-0) prerequisites
-----------------
-
 NOTE: the following instructions are created on a Windows machine - some commmands may need
 slight adjustments when working on Linux/OSX
+
+0) prerequisites
+----------------
 
 this demo assumes that an existing docker swarm is available
 
@@ -25,6 +25,27 @@ those machines are deployed in its own network:
 being the first IP in DHCP pool:
 
     192.168.88.100
+
+to create each machine in VirtualBox, this is the command that was used
+
+    docker-machine create --driver virtualbox --virtualbox-cpu-count 1 --virtualbox-memory 1024 --virtualbox-hostonly-cidr "192.168.88.1/24" <docker-machine-name>
+
+once they are created, the swarm must be initialized;
+set environment to point to the first machine (docker-env is a handy script to issue the commands needed in each OS)
+
+    docker-env docker-swarm-manager-1
+    docker swarm init --advertise-addr 192.168.88.100
+
+upon initialization, the swarm exposes two tokens, one to add new manager nodes, one to add new worker nodes;
+the commands needed to get the tokens are these ones
+
+    docker swarm join-token manager -q
+    docker swarm join-token worker -q
+
+with the tokens, just move the environment to each machine, managers and workers, and issue this command
+
+    docker-env <docker-machine-name>
+    docker swarm join --token <manager-or-worker-token> 192.168.88.100:2377
 
 1) set up the configuration store
 ---------------------------------
