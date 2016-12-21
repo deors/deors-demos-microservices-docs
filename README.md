@@ -309,7 +309,6 @@ edit src\main\docker\Dockerfile
     FROM frolvlad/alpine-oraclejdk8:slim
     VOLUME /tmp
     ADD deors.demos.microservices.bookrecservice-0.0.1-SNAPSHOT.jar app.jar
-    RUN sh -c 'touch /app.jar'
     ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
 
 repeat for the other projects (don't forget to update Jar file in ADD command)
