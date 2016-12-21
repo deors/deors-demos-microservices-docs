@@ -427,6 +427,13 @@ verify they are all removed
 
 remove all stored images (this must be done in every machine if more than one was used)
 
+if in windows
+
+    for /F %f in ('docker ps -a -q') do (docker rm %f)
+    for /F %f in ('docker images -q') do (docker rmi --force %f)
+
+if in linux
+
     docker rm $(docker ps -a -q)
     docker rmi --force $(docker images -q)
 
