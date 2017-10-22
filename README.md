@@ -1,24 +1,27 @@
 # deors.demos.microservices.docs
-Microservices demo: repository containing the step-by-step instructions to recreate the demo
 
-NOTE: the following instructions are created on a Windows machine - some commmands may need
-slight adjustments when working on Linux/OSX
+## microservices with Spring Boot and Spring Cloud
 
-0) prerequisites
-----------------
+this repository contains the step-by-step instructions to recreate the microservices with Spring Boot and Spring Cloud demonstration
 
-this demo assumes that an existing docker swarm is available
+this demo is organised in iterations, starting from the basics and building up in complexity and features along the way
 
-in my case, I have 6 machines on VirtualBox named:
+NOTE: the following instructions are created on a Windows machine - some commands may need slight adjustments when working on Linux/OSX
 
-    docker-machine start docker-swarm-manager-1
-    docker-machine start docker-swarm-manager-2
-    docker-machine start docker-swarm-manager-3
-    docker-machine start docker-swarm-worker-1
-    docker-machine start docker-swarm-worker-2
-    docker-machine start docker-swarm-worker-3
+## 0) prerequisites
 
-those machines are deployed in its own network:
+this demo assumes that an existing Docker Swarm is available; the following instructions will show how to create a simple one in VirtualBox
+
+the swarm will be formed by three manager nodes, and three worker nodes, named:
+
+    docker-swarm-manager-1
+    docker-swarm-manager-2
+    docker-swarm-manager-3
+    docker-swarm-worker-1
+    docker-swarm-worker-2
+    docker-swarm-worker-3
+
+the machines will be deployed in its own network:
 
     192.168.88.1/24
 
@@ -31,7 +34,7 @@ to create each machine in VirtualBox, this is the command that was used
     docker-machine create --driver virtualbox --virtualbox-cpu-count 1 --virtualbox-memory 1024 --virtualbox-hostonly-cidr "192.168.88.1/24" <docker-machine-name>
 
 once they are created, the swarm must be initialized;
-set environment to point to the first machine (docker-env is a handy script to issue the commands needed in each OS)
+but before, set the environment to point to the first machine (docker-env is a handy script to issue the FOR command needed in Windows)
 
     docker-env docker-swarm-manager-1
     docker swarm init --advertise-addr 192.168.88.100
@@ -47,21 +50,40 @@ with the tokens, just move the environment to each machine, managers and workers
     docker-env <docker-machine-name>
     docker swarm join --token <manager-or-worker-token> 192.168.88.100:2377
 
-1) set up the configuration store
----------------------------------
+once the swarm is created, it can be stopped and started again with the following command sets; to stop the swarm:
+
+    docker-machine stop docker-swarm-manager-1
+    docker-machine stop docker-swarm-manager-2
+    docker-machine stop docker-swarm-manager-3
+    docker-machine stop docker-swarm-worker-1
+    docker-machine stop docker-swarm-worker-2
+    docker-machine stop docker-swarm-worker-3
+
+to start it again:
+
+    docker-machine start docker-swarm-manager-1
+    docker-machine start docker-swarm-manager-2
+    docker-machine start docker-swarm-manager-3
+    docker-machine start docker-swarm-worker-1
+    docker-machine start docker-swarm-worker-2
+    docker-machine start docker-swarm-worker-3
+
+## 1) set up the configuration store
+
+the configuration store is a repository where microservice settings are stored, and accessible for microservice initialisation at boot time
 
 create and change to a directory for the project
 
     mkdir %HOME%\microservices\deors.demos.microservices.configstore
     cd %HOME%\microservices\deors.demos.microservices.configstore
 
-create file application.properties
+create file application.properties; these settings are common to all microservices
 
     debug = true
     spring.jpa.generate-ddl = true
 
 create file eureka-service.properties
-    
+
     server.port = ${PORT:7878}
     eureka.client.register-with-eureka = false
     eureka.client.fetch-registry = false
@@ -75,6 +97,13 @@ create file bookrec-service.properties
     server.port = ${PORT:8080}
     eureka.client.serviceUrl.defaultZone = http://${EUREKA_HOST:localhost}:${EUREKA_PORT:7878}/eureka/
 
+create file bookrec-edgeservice.properties
+
+    server.port = ${PORT:8181}
+    eureka.client.serviceUrl.defaultZone = http://${EUREKA_HOST:localhost}:${EUREKA_PORT:7878}/eureka/
+    ribbon.eureka.enabled = true
+    defaultBook = this is the default recommendation: Book {id=-1, title='robots of dawn', author='isaac asimov'}
+
 initialise the Git repository
 
     git init
@@ -86,15 +115,16 @@ publish it online (i.e. GitHub, replace with your own repository)
     git remote add origin https://github.com/deors/deors.demos.microservices.configstore.git
     git push origin master
 
-2) set up the configuration server
-----------------------------------
+## 2) set up the configuration server
+
+the configuration server is the microservice that will provide every other microservice in the system with the configuration settings they need at boot time
 
 go to https://start.spring.io/
 
 create project
 
     group: deors.demos.microservices
-    artifact: deors.demos.microservices.configservice
+    artifact: configservice
     depedencies: config server
 
 extract zip to
@@ -103,7 +133,7 @@ extract zip to
 
 change into extracted directory
 
-    cd %HOME%\microservices\deors.demos.microservices.configservice
+    cd %HOME%\microservices\configservice
 
 ensure config store location is properly set;
 edit src\main\resources\application.properties
@@ -112,21 +142,22 @@ edit src\main\resources\application.properties
     spring.cloud.config.server.git.uri = ${CONFIG_VOL:https://github.com/deors/deors.demos.microservices.configstore.git}
 
 configure config server to start automatically;
-edit src\main\java\deors\demos\microservices\Application.java
+edit src\main\java\deors\demos\microservices\configservice\ConfigserviceApplication.java
 
 add class annotation
 
     @org.springframework.cloud.config.server.EnableConfigServer
 
-3) set up the Eureka server
----------------------------
+## 3) set up the service registry server (Eureka)
+
+the service registry server is the microservice that will enable every other microservice in the system to register 'where' they are physically located, so others can discover them and interact with them
 
 go to https://start.spring.io/
 
 create project
 
     group: deors.demos.microservices
-    artifact: deors.demos.microservices.eurekaservice
+    artifact: eurekaservice
     depedencies:
         eureka server
         config client
@@ -137,7 +168,7 @@ extract zip to
 
 change into extracted directory
 
-    cd %HOME%\microservices\deors.demos.microservices.eurekaservice
+    cd %HOME%\microservices\eurekaservice
 
 ensure config service is used by moving props to bootstrap phase
 
@@ -149,21 +180,22 @@ edit src\main\resources\bootstrap.properties
     spring.cloud.config.uri = http://${CONFIG_HOST:localhost}:${CONFIG_PORT:8888}
 
 configure eureka server to start automatically;
-edit src\main\java\deors\demos\microservices\Application.java
+edit src\main\java\deors\demos\microservices\eurekaservice\Application.java
 
 add class annotation
 
     @org.springframework.cloud.netflix.eureka.server.EnableEurekaServer
 
-4) set up the Hystrix dashboard
--------------------------------
+## 4) set up the short-circuit dashboard (Hystrix)
+
+the short-circuit dashboard will provide devs and ops teams with real-time views about service interactions including for example which of them are experimenting failures causing circuits to 'open'
 
 go to https://start.spring.io/
 
 create project
 
     group: deors.demos.microservices
-    artifact: deors.demos.microservices.hystrixdashboard
+    artifact: hystrixdashboard
     depedencies:
         hystrix dashboard
         eureka discovery
@@ -175,7 +207,7 @@ extract zip to
 
 change into extracted directory
 
-    cd %HOME%\microservices\deors.demos.microservices.hystrixdashboard
+    cd %HOME%\microservices\hystrixdashboard
 
 ensure config service is used by moving props to bootstrap phase
 
@@ -187,21 +219,22 @@ edit src\main\resources\bootstrap.properties
     spring.cloud.config.uri = http://${CONFIG_HOST:localhost}:${CONFIG_PORT:8888}
 
 configure hystrix dashboard to start automatically;
-edit src\main\java\deors\demos\microservices\Application.java
+edit src\main\java\deors\demos\microservices\hystrixdashboard\HystrixdashboardApplication.java
 
 add class annotation
 
     @org.springframework.cloud.netflix.hystrix.dashboard.EnableHystrixDashboard
 
-5) set up book recommendation service
--------------------------------------
+## 5) set up book recommendation service
+
+this is the first microservice with actual functionality on our problem domain; bookrec is the service which provides methods to query, create, update and remove Book entities from the data store
 
 go to https://start.spring.io/
 
 create project
 
     group: deors.demos.microservices
-    artifact: deors.demos.microservices.bookrecservice
+    artifact: bookrecservice
     depedencies:
         eureka discovery
         config client
@@ -218,7 +251,7 @@ extract zip to
 
 change into extracted directory
 
-    cd %HOME%\microservices\deors.demos.microservices.bookrecservice
+    cd %HOME%\microservices\bookrecservice
 
 ensure config service is used by moving props to bootstrap phase
 
@@ -230,7 +263,7 @@ edit src\main\resources\bootstrap.properties
     spring.cloud.config.uri = http://${CONFIG_HOST:localhost}:${CONFIG_PORT:8888}
 
 configure service to be discoverable;
-edit src\main\java\deors\demos\microservices\Application.java
+edit src\main\java\deors\demos\microservices\bookrecservice\BookrecserviceApplication.java
 
 add class annotation
 
@@ -284,12 +317,103 @@ add some test data (in IDE, create src/main/resources/import.sql)
     insert into book(id, title, author) values (8, '2010: odyssey two', 'arthur c. clarke')
     insert into book(id, title, author) values (9, 'starship troopers', 'robert a. heinlein')
 
-6) dockerize the services
--------------------------
+## 6) set up book recommendation edge service
+
+the bookrec edge service is used by clients to interact with bookrec service, which should be not exposed directly to clients
+
+go to https://start.spring.io/
+
+create project
+
+    group: deors.demos.microservices
+    artifact: bookrecedgeservice
+    depedencies:
+        eureka discovery
+        config client
+        hystrix
+        ribbon
+        zuul
+        rest repositories hal browser
+        hateoas
+        web
+
+extract zip to
+
+    %HOME%\microservices
+
+change into extracted directory
+
+    cd %HOME%\microservices\bookrecedgeservice
+
+ensure config service is used by moving props to bootstrap phase
+
+    ren src\main\resources\application.properties bootstrap.properties
+
+edit src\main\resources\bootstrap.properties
+
+    spring.application.name = bookrec-edgeservice
+    spring.cloud.config.uri = http://${CONFIG_HOST:localhost}:${CONFIG_PORT:8888}
+
+configure service to be discoverable and to use zuul proxy;
+edit src\main\java\deors\demos\microservices\bookrecedgeservice\BookrecedgeserviceApplication.java
+
+add class annotations
+
+    @org.springframework.cloud.client.discovery.EnableDiscoveryClient
+    @org.springframework.cloud.netflix.zuul.EnableZuulProxy
+
+add restTemplate() method to enable load balancing when calling bookrec-service
+
+    @Bean
+    @org.springframework.cloud.client.loadbalancer.LoadBalanced
+    RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+create Book bean (in IDE)
+
+    public class Book {
+        private Long id;
+        private String title;
+        private String author;
+    }
+
+generate bean constructors (one with three properties), getters, setters and toString method
+
+create BookController for edge service
+
+    @RestController
+    class QuoteController {
+        @Autowired
+        RestTemplate restTemplate;
+
+        @Value("${defaultBook}")
+        private String defaultBook;
+
+        @RequestMapping("/bookrecedge")
+        @com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand(fallbackMethod = "getDefaultBook")
+        public String getBookRecommendation() {
+            return restTemplate.getForObject("http://bookrec-service/bookrec", String.class);
+        }
+
+        public String getDefaultBook() {
+            return defaultBook;
+        }
+    }
+
+## 7) running services locally
+
+services are now ready to be executed locally, using the sensible default configuration settings and the embedded runtimes provided by Spring Boot
+
+each service will be run by executing this command in the project folder:
+
+    mvn spring-boot:run
+
+## 8) dockerize the services
 
 configure pom.xml and Dockerfile to allow each service to run as a Docker image
 
-    cd %HOME%\microservices\deors.demos.microservices.bookrecservice
+    cd %HOME%\microservices\bookrecservice
 
 edit pom.xml
 
@@ -304,7 +428,7 @@ add inside &lt;build&gt;&lt;plugins&gt;
         <artifactId>docker-maven-plugin</artifactId>
         <version>0.4.11</version>
         <configuration>
-            <imageName>${docker.image.prefix}/${project.artifactId}</imageName>
+            <imageName>${docker.image.prefix}/${project.groupId}.${project.artifactId}</imageName>
             <dockerDirectory>src/main/docker</dockerDirectory>
             <imageTags>
                 <imageTag>${project.version}</imageTag>
@@ -329,13 +453,12 @@ edit src\main\docker\Dockerfile
 
     FROM frolvlad/alpine-oraclejdk8:slim
     VOLUME /tmp
-    ADD deors.demos.microservices.bookrecservice-0.0.1-SNAPSHOT.jar app.jar
+    ADD bookrecservice-0.0.1-SNAPSHOT.jar app.jar
     ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
 
-repeat for the other projects (don't forget to update Jar file in ADD command)
+repeat for the other projects (don't forget to update Jar file name in ADD command)
 
-7) creating the images
-----------------------
+## 9) creating the images
 
 launch swarm (one machine is enough)
 
@@ -354,8 +477,7 @@ build and push images by running this command for each project
 
     mvn package docker:build -DpushImage
 
-8) running the images as services
----------------------------------
+## 10) running the images as services
 
 create an overlay network for all the services
 
@@ -381,8 +503,12 @@ launch bookrec-service and check the status
     docker service create -p 8080:8080 -e "CONFIG_HOST=config-service" -e "EUREKA_HOST=eureka-service" --name bookrec-service --network microdemo-network deors/deors.demos.microservices.bookrecservice:latest
     docker service ps bookrec-service
 
-9) test services
-----------------
+launch bookrec-edgeservice and check the status
+
+    docker service create -p 8181:8181 -e "CONFIG_HOST=config-service" -e "EUREKA_HOST=eureka-service" --name bookrec-edgeservice --network microdemo-network deors/deors.demos.microservices.bookrecedgeservice:latest
+    docker service ps bookrec-edgeservice
+
+## 11) test services
 
 access config service
 
@@ -397,7 +523,11 @@ check eureka service is up and book recommendation service is registered
 
     http://192.168.88.100:7878/
 
-access the HAL browser on the book recommendation service    
+check hystrix dashboard is up and running
+
+    http://192.168.88.100:7979/hystrix
+
+access the HAL browser on the book recommendation service
 
     http://192.168.88.100:8080/
 
@@ -405,15 +535,17 @@ access the book recommendation service
 
     http://192.168.88.100:8080/bookrec
 
-10) scale the book recommendation service
------------------------------------------
+check eureka service again; the book recommendation service should be registered
+
+    http://192.168.88.100:7878/
+
+## 12) scale the book recommendation service
 
 ask Docker to scale the service
 
     docker service scale bookrec-service=3
 
-11) make updates and roll the changes without service downtime
---------------------------------------------------------------
+## 13) make updates and roll the changes without service downtime
 
 make some change and deploy a rolling update;
 for example change text string in BookController class stored here: src\main\java\deors\demos\microservices\BookController.java
@@ -431,8 +563,7 @@ check how the change is deployed
 
     docker service ps bookrec-service
 
-12) clean up
-------------
+## 14) clean up
 
 remove running services
 
@@ -467,8 +598,7 @@ stop the machines
     docker-machine stop docker-swarm-manager-1
 
 
-TROUBLESHOOTING:
-----------------
+## TROUBLESHOOTING
 
 if using more than one machine in the swarm, images must be published to Docker Hub so they are accessible to all hosts in the swarm
 
