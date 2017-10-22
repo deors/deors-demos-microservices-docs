@@ -307,7 +307,7 @@ add class annotations
     @org.springframework.cloud.client.discovery.EnableDiscoveryClient
     @org.springframework.cloud.netflix.zuul.EnableZuulProxy
 
-add restTemplate() method to enable load balancing when calling bookrec-service
+add restTemplate() method to enable load balancing when calling bookrecservice
 
     @Bean
     @org.springframework.cloud.client.loadbalancer.LoadBalanced
@@ -338,7 +338,7 @@ create BookController for edge service
         @RequestMapping("/bookrecedge")
         @com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand(fallbackMethod = "getDefaultBook")
         public String getBookRecommendation() {
-            return restTemplate.getForObject("http://bookrec-service/bookrec", String.class);
+            return restTemplate.getForObject("http://bookrecservice/bookrec", String.class);
         }
 
         public String getDefaultBook() {
