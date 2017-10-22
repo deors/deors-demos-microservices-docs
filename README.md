@@ -23,6 +23,9 @@ create file application.properties; these settings are common to all microservic
 
     debug = true
     spring.jpa.generate-ddl = true
+    management.security.enabled = false
+
+the third configuration setting will disable security for actuator endpoints, which allows for remote operations of running applications; disabling security in this manner should be done only when public access to those endpoints is restricted externally (for example through the web server or reverse proxy); never expose actuator endpoints publicly and unsecurely!
 
 create file eurekaservice.properties
 
