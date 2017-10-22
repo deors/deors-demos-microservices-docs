@@ -131,9 +131,9 @@ add class annotation
 
     @org.springframework.cloud.netflix.eureka.server.EnableEurekaServer
 
-### 1.4) set up the short-circuit dashboard (Hystrix)
+### 1.4) set up the circuit breaker dashboard (Hystrix)
 
-the short-circuit dashboard will provide devs and ops teams with real-time views about service interactions including for example which of them are experimenting failures causing circuits to 'open'
+the circuit breaker dashboard will provide devs and ops teams with real-time views about service calls performance and failures including for example which of them are experimenting repeated failures causing circuits to 'open'
 
 go to https://start.spring.io/
 
