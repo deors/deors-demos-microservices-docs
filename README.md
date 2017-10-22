@@ -24,22 +24,22 @@ create file application.properties; these settings are common to all microservic
     debug = true
     spring.jpa.generate-ddl = true
 
-create file eureka-service.properties
+create file eurekaservice.properties
 
     server.port = ${PORT:7878}
     eureka.client.register-with-eureka = false
     eureka.client.fetch-registry = false
 
-create file hystrix-dashboard.properties
+create file hystrixdashboard.properties
 
     server.port = ${PORT:7979}
 
-create file bookrec-service.properties
+create file bookrecservice.properties
 
     server.port = ${PORT:8080}
     eureka.client.serviceUrl.defaultZone = http://${EUREKA_HOST:localhost}:${EUREKA_PORT:7878}/eureka/
 
-create file bookrec-edgeservice.properties
+create file bookrecedgeservice.properties
 
     server.port = ${PORT:8181}
     eureka.client.serviceUrl.defaultZone = http://${EUREKA_HOST:localhost}:${EUREKA_PORT:7878}/eureka/
@@ -118,7 +118,7 @@ ensure config service is used by moving props to bootstrap phase
 
 edit src\main\resources\bootstrap.properties
 
-    spring.application.name = eureka-service
+    spring.application.name = eurekaservice
     spring.cloud.config.uri = http://${CONFIG_HOST:localhost}:${CONFIG_PORT:8888}
 
 configure eureka server to start automatically;
@@ -157,7 +157,7 @@ ensure config service is used by moving props to bootstrap phase
 
 edit src\main\resources\bootstrap.properties
 
-    spring.application.name = hystrix-dashboard
+    spring.application.name = hystrixdashboard
     spring.cloud.config.uri = http://${CONFIG_HOST:localhost}:${CONFIG_PORT:8888}
 
 configure hystrix dashboard to start automatically;
@@ -201,7 +201,7 @@ ensure config service is used by moving props to bootstrap phase
 
 edit src\main\resources\bootstrap.properties
 
-    spring.application.name = bookrec-service
+    spring.application.name = bookrecservice
     spring.cloud.config.uri = http://${CONFIG_HOST:localhost}:${CONFIG_PORT:8888}
 
 configure service to be discoverable;
@@ -293,7 +293,7 @@ ensure config service is used by moving props to bootstrap phase
 
 edit src\main\resources\bootstrap.properties
 
-    spring.application.name = bookrec-edgeservice
+    spring.application.name = bookrecedgeservice
     spring.cloud.config.uri = http://${CONFIG_HOST:localhost}:${CONFIG_PORT:8888}
 
 configure service to be discoverable and to use zuul proxy;
@@ -361,8 +361,8 @@ access the config service
 
 check that config service is capable of returning the right configuration for some of the services
 
-    http://localhost:8888/bookrec-service/default
-    http://localhost:8888/eureka-service/default
+    http://localhost:8888/bookrecservice/default
+    http://localhost:8888/eurekaservice/default
 
 check that eureka service is up and the book recommendation service and edge service are registered
 
@@ -556,8 +556,8 @@ access the config service
 
 check that config service is capable of returning the right configuration for some of the services
 
-    http://192.168.88.100:8888/bookrec-service/default
-    http://192.168.88.100:8888/eureka-service/default
+    http://192.168.88.100:8888/bookrecservice/default
+    http://192.168.88.100:8888/eurekaservice/default
 
 check that eureka service is up and the book recommendation service and edge service are registered
 
