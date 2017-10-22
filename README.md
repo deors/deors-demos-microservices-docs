@@ -8,67 +8,9 @@ this demo is organised in iterations, starting from the basics and building up i
 
 NOTE: the following instructions are created on a Windows machine - some commands may need slight adjustments when working on Linux/OSX
 
-## 0) prerequisites
+## iteration 1) the basics
 
-this demo assumes that an existing Docker Swarm is available; the following instructions will show how to create a simple one in VirtualBox
-
-the swarm will be formed by three manager nodes, and three worker nodes, named:
-
-    docker-swarm-manager-1
-    docker-swarm-manager-2
-    docker-swarm-manager-3
-    docker-swarm-worker-1
-    docker-swarm-worker-2
-    docker-swarm-worker-3
-
-the machines will be deployed in its own network:
-
-    192.168.88.1/24
-
-being the first IP in DHCP pool:
-
-    192.168.88.100
-
-to create each machine in VirtualBox, this is the command that was used
-
-    docker-machine create --driver virtualbox --virtualbox-cpu-count 1 --virtualbox-memory 1024 --virtualbox-hostonly-cidr "192.168.88.1/24" <docker-machine-name>
-
-once they are created, the swarm must be initialized;
-but before, set the environment to point to the first machine (docker-env is a handy script to issue the FOR command needed in Windows)
-
-    docker-env docker-swarm-manager-1
-    docker swarm init --advertise-addr 192.168.88.100
-
-upon initialization, the swarm exposes two tokens, one to add new manager nodes, one to add new worker nodes;
-the commands needed to get the tokens are these ones
-
-    docker swarm join-token manager -q
-    docker swarm join-token worker -q
-
-with the tokens, just move the environment to each machine, managers and workers, and issue this command
-
-    docker-env <docker-machine-name>
-    docker swarm join --token <manager-or-worker-token> 192.168.88.100:2377
-
-once the swarm is created, it can be stopped and started again with the following command sets; to stop the swarm:
-
-    docker-machine stop docker-swarm-manager-1
-    docker-machine stop docker-swarm-manager-2
-    docker-machine stop docker-swarm-manager-3
-    docker-machine stop docker-swarm-worker-1
-    docker-machine stop docker-swarm-worker-2
-    docker-machine stop docker-swarm-worker-3
-
-to start it again:
-
-    docker-machine start docker-swarm-manager-1
-    docker-machine start docker-swarm-manager-2
-    docker-machine start docker-swarm-manager-3
-    docker-machine start docker-swarm-worker-1
-    docker-machine start docker-swarm-worker-2
-    docker-machine start docker-swarm-worker-3
-
-## 1) set up the configuration store
+### 1.1) set up the configuration store
 
 the configuration store is a repository where microservice settings are stored, and accessible for microservice initialisation at boot time
 
@@ -115,7 +57,7 @@ publish it online (i.e. GitHub, replace with your own repository)
     git remote add origin https://github.com/deors/deors.demos.microservices.configstore.git
     git push origin master
 
-## 2) set up the configuration server
+### 1.2) set up the configuration server
 
 the configuration server is the microservice that will provide every other microservice in the system with the configuration settings they need at boot time
 
@@ -148,7 +90,7 @@ add class annotation
 
     @org.springframework.cloud.config.server.EnableConfigServer
 
-## 3) set up the service registry server (Eureka)
+### 1.3) set up the service registry server (Eureka)
 
 the service registry server is the microservice that will enable every other microservice in the system to register 'where' they are physically located, so others can discover them and interact with them
 
@@ -186,7 +128,7 @@ add class annotation
 
     @org.springframework.cloud.netflix.eureka.server.EnableEurekaServer
 
-## 4) set up the short-circuit dashboard (Hystrix)
+### 1.4) set up the short-circuit dashboard (Hystrix)
 
 the short-circuit dashboard will provide devs and ops teams with real-time views about service interactions including for example which of them are experimenting failures causing circuits to 'open'
 
@@ -225,7 +167,7 @@ add class annotation
 
     @org.springframework.cloud.netflix.hystrix.dashboard.EnableHystrixDashboard
 
-## 5) set up book recommendation service
+### 1.5) set up the book recommendation service
 
 this is the first microservice with actual functionality on our problem domain; bookrec is the service which provides methods to query, create, update and remove Book entities from the data store
 
@@ -317,7 +259,7 @@ add some test data (in IDE, create src/main/resources/import.sql)
     insert into book(id, title, author) values (8, '2010: odyssey two', 'arthur c. clarke')
     insert into book(id, title, author) values (9, 'starship troopers', 'robert a. heinlein')
 
-## 6) set up book recommendation edge service
+### 1.6) set up the book recommendation edge service
 
 the bookrec edge service is used by clients to interact with bookrec service, which should be not exposed directly to clients
 
@@ -383,7 +325,7 @@ generate bean constructors (one with three properties), getters, setters and toS
 create BookController for edge service
 
     @RestController
-    class QuoteController {
+    class BookController {
         @Autowired
         RestTemplate restTemplate;
 
@@ -401,7 +343,7 @@ create BookController for edge service
         }
     }
 
-## 7) running services locally
+### 1.7) running services locally
 
 services are now ready to be executed locally, using the sensible default configuration settings and the embedded runtimes provided by Spring Boot
 
@@ -409,7 +351,105 @@ each service will be run by executing this command in the project folder:
 
     mvn spring-boot:run
 
-## 8) dockerize the services
+### 1.8) test services locally
+
+the services should all be available at the defined ports in the local host
+
+access the config service
+
+    http://localhost:8888/env
+
+check that config service is capable of returning the right configuration for some of the services
+
+    http://localhost:8888/bookrec-service/default
+    http://localhost:8888/eureka-service/default
+
+check that eureka service is up and the book recommendation service and edge service are registered
+
+    http://localhost:7878/
+
+check that hystrix dashboard is up and running
+
+    http://localhost:7979/hystrix
+
+access the HAL browser on the book recommendation service
+
+    http://localhost:8080/
+
+access the book recommendation service
+
+    http://localhost:8080/bookrec
+
+access the book recommendation edge service
+
+    http://localhost:8181/bookrecedge
+
+kill the book recommendation service, and access the book recommendation edge service;
+the default recommended book should be returned instead but the application keeps working
+
+## iteration 2) preparing for Docker and Swarm
+
+### 2.1) setting up a swarm
+
+this demo assumes that an existing Docker Swarm is available; the following instructions will show how to create a simple one in VirtualBox
+
+the swarm will be formed by three manager nodes, and three worker nodes, named:
+
+    docker-swarm-manager-1
+    docker-swarm-manager-2
+    docker-swarm-manager-3
+    docker-swarm-worker-1
+    docker-swarm-worker-2
+    docker-swarm-worker-3
+
+the machines will be deployed in its own network:
+
+    192.168.88.1/24
+
+being the first IP in DHCP pool:
+
+    192.168.88.100
+
+to create each machine in VirtualBox, this is the command that was used
+
+    docker-machine create --driver virtualbox --virtualbox-cpu-count 1 --virtualbox-memory 1024 --virtualbox-hostonly-cidr "192.168.88.1/24" <docker-machine-name>
+
+once they are created, the swarm must be initialized;
+but before, set the environment to point to the first machine (docker-env is a handy script to issue the FOR command needed in Windows)
+
+    docker-env docker-swarm-manager-1
+    docker swarm init --advertise-addr 192.168.88.100
+
+upon initialization, the swarm exposes two tokens, one to add new manager nodes, one to add new worker nodes;
+the commands needed to get the tokens are these ones
+
+    docker swarm join-token manager -q
+    docker swarm join-token worker -q
+
+with the tokens, just move the environment to each machine, managers and workers, and issue this command
+
+    docker-env <docker-machine-name>
+    docker swarm join --token <manager-or-worker-token> 192.168.88.100:2377
+
+once the swarm is created, it can be stopped and started again with the following command sets; to stop the swarm:
+
+    docker-machine stop docker-swarm-manager-1
+    docker-machine stop docker-swarm-manager-2
+    docker-machine stop docker-swarm-manager-3
+    docker-machine stop docker-swarm-worker-1
+    docker-machine stop docker-swarm-worker-2
+    docker-machine stop docker-swarm-worker-3
+
+to start it again:
+
+    docker-machine start docker-swarm-manager-1
+    docker-machine start docker-swarm-manager-2
+    docker-machine start docker-swarm-manager-3
+    docker-machine start docker-swarm-worker-1
+    docker-machine start docker-swarm-worker-2
+    docker-machine start docker-swarm-worker-3
+
+### 2.2) dockerize the services
 
 configure pom.xml and Dockerfile to allow each service to run as a Docker image
 
@@ -458,7 +498,7 @@ edit src\main\docker\Dockerfile
 
 repeat for the other projects (don't forget to update Jar file name in ADD command)
 
-## 9) creating the images
+### 2.3) creating the images
 
 launch swarm (one machine is enough)
 
@@ -477,7 +517,7 @@ build and push images by running this command for each project
 
     mvn package docker:build -DpushImage
 
-## 10) running the images as services
+### 2.4) running the images as services
 
 create an overlay network for all the services
 
@@ -508,22 +548,22 @@ launch bookrec-edgeservice and check the status
     docker service create -p 8181:8181 -e "CONFIG_HOST=config-service" -e "EUREKA_HOST=eureka-service" --name bookrec-edgeservice --network microdemo-network deors/deors.demos.microservices.bookrecedgeservice:latest
     docker service ps bookrec-edgeservice
 
-## 11) test services
+### 2.5) test services in the swarm
 
-access config service
+access the config service
 
     http://192.168.88.100:8888/env
 
-check config service is capable of returning the right configuration for some of the services
+check that config service is capable of returning the right configuration for some of the services
 
     http://192.168.88.100:8888/bookrec-service/default
     http://192.168.88.100:8888/eureka-service/default
 
-check eureka service is up and book recommendation service is registered
+check that eureka service is up and the book recommendation service and edge service are registered
 
     http://192.168.88.100:7878/
 
-check hystrix dashboard is up and running
+check that hystrix dashboard is up and running
 
     http://192.168.88.100:7979/hystrix
 
@@ -535,17 +575,17 @@ access the book recommendation service
 
     http://192.168.88.100:8080/bookrec
 
-check eureka service again; the book recommendation service should be registered
+access the book edge recommendation service
 
-    http://192.168.88.100:7878/
+    http://192.168.88.100:8181/bookrecedge
 
-## 12) scale the book recommendation service
+### 2.6) scale the book recommendation service
 
 ask Docker to scale the service
 
     docker service scale bookrec-service=3
 
-## 13) make updates and roll the changes without service downtime
+### 2.7) make updates and roll the changes without service downtime
 
 make some change and deploy a rolling update;
 for example change text string in BookController class stored here: src\main\java\deors\demos\microservices\BookController.java
@@ -563,7 +603,9 @@ check how the change is deployed
 
     docker service ps bookrec-service
 
-## 14) clean up
+## appendixes
+
+### clean up the swarm
 
 remove running services
 
@@ -597,8 +639,7 @@ stop the machines
     docker-machine stop docker-swarm-manager-2
     docker-machine stop docker-swarm-manager-1
 
-
-## TROUBLESHOOTING
+### troubleshooting
 
 if using more than one machine in the swarm, images must be published to Docker Hub so they are accessible to all hosts in the swarm
 
