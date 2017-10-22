@@ -241,7 +241,8 @@ create BookController
     public class BookController {
         @Autowired
         private BookRepository bookRepository;
-        @RequestMapping("/bookrec")
+
+        @RequestMapping("/bookrec")
         public String getBookRecommendation() throws UnknownHostException {
             return "the host in IP: "
                     + InetAddress.getLocalHost().getHostAddress()
@@ -277,8 +278,7 @@ create project
         config client
         hystrix
         ribbon
-        zuul
-        rest repositories hal browser
+        rest repositories hal browser
         hateoas
         web
 
@@ -305,7 +305,7 @@ edit src\main\java\deors\demos\microservices\bookrecedgeservice\Bookrecedgeservi
 add class annotations
 
     @org.springframework.cloud.client.discovery.EnableDiscoveryClient
-    @org.springframework.cloud.netflix.zuul.EnableZuulProxy
+    @org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker
 
 add restTemplate() method to enable load balancing when calling bookrecservice
 
@@ -339,7 +339,7 @@ create BookController for edge service
         @com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand(fallbackMethod = "getDefaultBook")
         public String getBookRecommendation() {
             return restTemplate.getForObject("http://bookrecservice/bookrec", String.class);
-        }
+        }
 
         public String getDefaultBook() {
             return defaultBook;
