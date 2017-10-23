@@ -300,7 +300,7 @@ edit src\main\resources\bootstrap.properties
     spring.application.name = bookrecedgeservice
     spring.cloud.config.uri = http://${CONFIG_HOST:localhost}:${CONFIG_PORT:8888}
 
-configure service to be discoverable and to use zuul proxy;
+configure service to be discoverable (Eureka) and to use circuit breaker (Hystrix);
 edit src\main\java\deors\demos\microservices\bookrecedgeservice\BookrecedgeserviceApplication.java
 
 add class annotations
@@ -308,7 +308,7 @@ add class annotations
     @org.springframework.cloud.client.discovery.EnableDiscoveryClient
     @org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker
 
-add restTemplate() method to enable load balancing when calling bookrecservice
+add restTemplate() method to enable load balancing (Ribbon) when calling bookrecservice
 
     @Bean
     @org.springframework.cloud.client.loadbalancer.LoadBalanced
