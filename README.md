@@ -32,6 +32,7 @@ create file eurekaservice.properties
     server.port = ${PORT:7878}
     eureka.client.register-with-eureka = false
     eureka.client.fetch-registry = false
+    eureka.client.serviceUrl.defaultZone = http://${HOSTNAME:localhost}:${PORT:7878}/eureka/
 
 create file hystrixdashboard.properties
 
@@ -242,7 +243,7 @@ create BookController
         @Autowired
         private BookRepository bookRepository;
 
-        @RequestMapping("/bookrec")
+        @RequestMapping("/bookrec")
         public String getBookRecommendation() throws UnknownHostException {
             return "the host in IP: "
                     + InetAddress.getLocalHost().getHostAddress()
@@ -305,7 +306,7 @@ edit src\main\java\deors\demos\microservices\bookrecedgeservice\Bookrecedgeservi
 add class annotations
 
     @org.springframework.cloud.client.discovery.EnableDiscoveryClient
-    @org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker
+    @org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker
 
 add restTemplate() method to enable load balancing when calling bookrecservice
 
@@ -338,8 +339,8 @@ create BookController for edge service
         @RequestMapping("/bookrecedge")
         @com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand(fallbackMethod = "getDefaultBook")
         public String getBookRecommendation() {
-            return restTemplate.getForObject("http://bookrecservice/bookrec", String.class);
-        }
+            return restTemplate.getForObject("http://bookrecservice/bookrec", String.class);
+        }
 
         public String getDefaultBook() {
             return defaultBook;
