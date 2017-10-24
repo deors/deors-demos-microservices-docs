@@ -6,7 +6,7 @@ this repository contains the step-by-step instructions to recreate the microserv
 
 this demo is organised in iterations, starting from the basics and building up in complexity and features along the way
 
-NOTE: the following instructions are created on a Windows machine - some commands may need slight adjustments when working on Linux/OSX
+NOTE: the following instructions are created on a Windows machine, hence some commands may need slight adjustments when working on Linux/OSX, e.g. replace %ENV\_VAR% by ${ENV\_VAR}
 
 ## iteration 1) the basics
 
@@ -71,7 +71,11 @@ create project
 
     group: deors.demos.microservices
     artifact: configservice
-    depedencies: config server
+    depedencies:
+        actuator
+        config server
+
+the actuator depedency, when added, enables useful endpoints to facilitate application operations
 
 extract zip to
 
@@ -105,6 +109,7 @@ create project
     group: deors.demos.microservices
     artifact: eurekaservice
     depedencies:
+        actuator
         eureka server
         config client
 
@@ -143,6 +148,7 @@ create project
     group: deors.demos.microservices
     artifact: hystrixdashboard
     depedencies:
+        actuator
         hystrix dashboard
         eureka discovery
         config client
@@ -182,6 +188,7 @@ create project
     group: deors.demos.microservices
     artifact: bookrecservice
     depedencies:
+        actuator
         eureka discovery
         config client
         jpa
@@ -275,11 +282,12 @@ create project
     group: deors.demos.microservices
     artifact: bookrecedgeservice
     depedencies:
+        actuator
         eureka discovery
         config client
         hystrix
         ribbon
-        rest repositories hal browser
+        rest repositories hal browser
         hateoas
         web
 
@@ -359,7 +367,7 @@ each service will be run by executing this command in the project folder:
 
 the services should all be available at the defined ports in the local host
 
-access the config service
+access the config service through one the actuator endpoints (it is currently unsecured)
 
     http://localhost:8888/env
 
@@ -391,11 +399,18 @@ access the book recommendation edge service
 stop the book recommendation service, and access the book recommendation edge service again;
 the default recommended book should be returned instead but the application keeps working
 
+go back to hystrix dashboard and start monitoring the book recommendation edge service;
+registering this URL in the dashboard (and optionally configuring the delay and page title)
+
+     http://localhost:8181/hystrix.stream
+
+once registered, try again to access the edge service, with and without the inner service up and running, and experiment how thresholds (number of errors in a short period of time) impact the opening and closing of the circuit between the inner and the edge service
+
 ## iteration 2) preparing for Docker and Swarm
 
 ### 2.1) setting up a swarm
 
-this demo assumes that an existing Docker Swarm is available; the following instructions will show how to create a simple one in VirtualBox
+this demo assumes that an existing Docker Swarm is available; the following instructions will show how to create a simple one in VirtualBox, in the case that a swarm is not already available
 
 the swarm will be formed by three manager nodes, and three worker nodes, named:
 
@@ -408,50 +423,57 @@ the swarm will be formed by three manager nodes, and three worker nodes, named:
 
 the machines will be deployed in its own network:
 
-    192.168.88.1/24
+    192.168.66.1/24
 
 being the first IP in DHCP pool:
 
-    192.168.88.100
+    192.168.66.100
 
 to create each machine in VirtualBox, this is the command that was used
 
-    docker-machine create --driver virtualbox --virtualbox-cpu-count 1 --virtualbox-memory 1024 --virtualbox-hostonly-cidr "192.168.88.1/24" <docker-machine-name>
+    docker-machine create --driver virtualbox --virtualbox-cpu-count 1 --virtualbox-memory 1024 --virtualbox-hostonly-cidr "192.168.66.1/24" <docker-machine-name>
 
-once they are created, the swarm must be initialized;
-but before, set the environment to point to the first machine (docker-env is a handy script to issue the FOR command needed in Windows)
+before beginning to configure the swarm, set the environment to point to the first machine
 
-    docker-env docker-swarm-manager-1
-    docker swarm init --advertise-addr 192.168.88.100
+when in Windows
 
-upon initialization, the swarm exposes two tokens, one to add new manager nodes, one to add new worker nodes;
+    @FOR /f "tokens=*" %i IN ('docker-machine env docker-swarm-manager-1') DO @%i
+
+when in Linux
+
+    eval $(docker-machine env docker-swarm-manager-1)
+
+next, to initialise a swarm the following command is used
+
+    docker swarm init --advertise-addr 192.168.66.100
+
+upon initialisation, the swarm exposes two tokens, one to add new manager nodes, one to add new worker nodes;
 the commands needed to get the tokens are these ones
 
     docker swarm join-token manager -q
     docker swarm join-token worker -q
 
-with the tokens, just move the environment to each machine, managers and workers, and issue this command
+with the tokens at hand, just change the environment to point to each machine, every manager and worker nodes
 
-    docker-env <docker-machine-name>
-    docker swarm join --token <manager-or-worker-token> 192.168.88.100:2377
+when in Windows
 
-once the swarm is created, it can be stopped and started again with the following command sets; to stop the swarm:
+    @FOR /f "tokens=*" %i IN ('docker-machine env <docker-machine-name>') DO @%i
 
-    docker-machine stop docker-swarm-manager-1
-    docker-machine stop docker-swarm-manager-2
-    docker-machine stop docker-swarm-manager-3
-    docker-machine stop docker-swarm-worker-1
-    docker-machine stop docker-swarm-worker-2
-    docker-machine stop docker-swarm-worker-3
+when in Linux
 
-to start it again:
+    eval $(docker-machine env <docker-machine-name>)
 
-    docker-machine start docker-swarm-manager-1
-    docker-machine start docker-swarm-manager-2
-    docker-machine start docker-swarm-manager-3
-    docker-machine start docker-swarm-worker-1
-    docker-machine start docker-swarm-worker-2
-    docker-machine start docker-swarm-worker-3
+and use the swarm join command
+
+    docker swarm join --token <manager-or-worker-token> 192.168.66.100:2377
+
+once it is ready, the swarm can be stopped with the following command
+
+    docker-machine stop docker-swarm-manager-1 docker-swarm-manager-2 docker-swarm-manager-3 docker-swarm-worker-1 docker-swarm-worker-2 docker-swarm-worker-3
+
+and to start it again
+
+    docker-machine start docker-swarm-manager-1 docker-swarm-manager-2 docker-swarm-manager-3 docker-swarm-worker-1 docker-swarm-worker-2 docker-swarm-worker-3
 
 ### 2.2) dockerize the services
 
@@ -504,18 +526,19 @@ repeat for the other projects (don't forget to update Jar file name in ADD comma
 
 ### 2.3) creating the images
 
-launch swarm (one machine is enough)
+launch the swarm (one machine is enough)
 
-    docker-machine start docker-swarm-manager-1
-    docker-machine start docker-swarm-manager-2
-    docker-machine start docker-swarm-manager-3
-    docker-machine start docker-swarm-worker-1
-    docker-machine start docker-swarm-worker-2
-    docker-machine start docker-swarm-worker-3
+    docker-machine start docker-swarm-manager-1 docker-swarm-manager-2 docker-swarm-manager-3 docker-swarm-worker-1 docker-swarm-worker-2 docker-swarm-worker-3
 
 point docker client to one of the machines
 
-    docker-env docker-swarm-manager-1
+when in Windows
+
+    @FOR /f "tokens=*" %i IN ('docker-machine env docker-swarm-manager-1') DO @%i
+
+when in Linux
+
+    eval $(docker-machine env docker-swarm-manager-1)
 
 build and push images by running this command for each project
 
@@ -554,37 +577,44 @@ launch bookrec-edgeservice and check the status
 
 ### 2.5) test services in the swarm
 
-access the config service
+access the config service through one the actuator endpoints (it is currently unsecured)
 
-    http://192.168.88.100:8888/env
+    http://192.168.66.100:8888/env
 
 check that config service is capable of returning the right configuration for some of the services
 
-    http://192.168.88.100:8888/bookrecservice/default
-    http://192.168.88.100:8888/eurekaservice/default
+    http://192.168.66.100:8888/bookrecservice/default
+    http://192.168.66.100:8888/eurekaservice/default
 
 check that eureka service is up and the book recommendation service and edge service are registered
 
-    http://192.168.88.100:7878/
+    http://192.168.66.100:7878/
 
 check that hystrix dashboard is up and running
 
-    http://192.168.88.100:7979/hystrix
+    http://192.168.66.100:7979/hystrix
 
 access the HAL browser on the book recommendation service
 
-    http://192.168.88.100:8080/
+    http://192.168.66.100:8080/
 
 access the book recommendation service
 
-    http://192.168.88.100:8080/bookrec
+    http://192.168.66.100:8080/bookrec
 
 access the book edge recommendation service
 
-    http://192.168.88.100:8181/bookrecedge
+    http://192.168.66.100:8181/bookrecedge
 
 stop the book recommendation service, and access the book recommendation edge service again;
 the default recommended book should be returned instead but the application keeps working
+
+go back to hystrix dashboard and start monitoring the book recommendation edge service;
+registering this URL in the dashboard (and optionally configuring the delay and page title)
+
+     http://192.168.66.100:8181/hystrix.stream
+
+once registered, try again to access the edge service, with and without the inner service up and running, and experiment how thresholds (number of errors in a short period of time) impact the opening and closing of the circuit between the inner and the edge service
 
 ### 2.6) scale the book recommendation service
 
@@ -627,29 +657,28 @@ verify they are all removed
 
 remove all stored images (this must be done in every machine if more than one was used)
 
-if in windows
+when in Windows
 
     for /F %f in ('docker ps -a -q') do (docker rm %f)
     for /F %f in ('docker images -q') do (docker rmi --force %f)
 
-if in linux
+when in Linux
 
     docker rm $(docker ps -a -q)
     docker rmi --force $(docker images -q)
 
 stop the machines
 
-    docker-machine stop docker-swarm-worker-3
-    docker-machine stop docker-swarm-worker-2
-    docker-machine stop docker-swarm-worker-1
-    docker-machine stop docker-swarm-manager-3
-    docker-machine stop docker-swarm-manager-2
-    docker-machine stop docker-swarm-manager-1
+    docker-machine stop docker-swarm-manager-1 docker-swarm-manager-2 docker-swarm-manager-3 docker-swarm-worker-1 docker-swarm-worker-2 docker-swarm-worker-3
+
+and if desired, the swarm can be disposed, too
+
+    docker-machine rm docker-swarm-manager-1 docker-swarm-manager-2 docker-swarm-manager-3 docker-swarm-worker-1 docker-swarm-worker-2 docker-swarm-worker-3
 
 ### troubleshooting
 
-if using more than one machine in the swarm, images must be published to Docker Hub so they are accessible to all hosts in the swarm
+if using more than one machine in the swarm, images must be published to Docker Hub or another registry (for example a local registry) so they are accessible to all hosts in the swarm
 
-if needed to troubleshoot connectivity with curl in alpine-based images, install and use this way
+to troubleshoot connectivity with curl in alpine-based images, install and use this way
 
-    docker exec <id> apk add --update curl && curl <url>
+    docker exec <container-id> apk add --update curl && curl <url>
