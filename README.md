@@ -550,30 +550,34 @@ create an overlay network for all the services
 
     docker network create -d overlay microdemo-network
 
-launch config-service and check the status
+launch configservice and check the status
 
-    docker service create -p 8888:8888 --name config-service --network microdemo-network deors/deors.demos.microservices.configservice:latest
-    docker service ps config-service
+    docker service create -p 8888:8888 --name configservice --network microdemo-network deors/deors.demos.microservices.configservice:latest
+    docker service ps configservice
 
-launch eureka-service and check the status
+launch eurekaservice and check the status
 
-    docker service create -p 7878:7878 -e "CONFIG_HOST=config-service" --name eureka-service --network microdemo-network deors/deors.demos.microservices.eurekaservice:latest
-    docker service ps eureka-service
+    docker service create -p 7878:7878 -e "HOSTNAME=eurekaservice" -e "CONFIG_HOST=configservice" --name eurekaservice --network microdemo-network deors/deors.demos.microservices.eurekaservice:latest
+    docker service ps eurekaservice
 
 launch hystrix-dashboard and check the status
 
-    docker service create -p 7979:7979 -e "CONFIG_HOST=config-service" --name hystrix-dashboard --network microdemo-network deors/deors.demos.microservices.hystrixdashboard:latest
-    docker service ps hystrix-dashboard
+    docker service create -p 7979:7979 -e "CONFIG_HOST=configservice" --name hystrixdashboard --network microdemo-network deors/deors.demos.microservices.hystrixdashboard:latest
+    docker service ps hystrixdashboard
 
 launch bookrec-service and check the status
 
-    docker service create -p 8080:8080 -e "CONFIG_HOST=config-service" -e "EUREKA_HOST=eureka-service" --name bookrec-service --network microdemo-network deors/deors.demos.microservices.bookrecservice:latest
-    docker service ps bookrec-service
+    docker service create -p 8080:8080 -e "CONFIG_HOST=configservice" -e "EUREKA_HOST=eurekaservice" --name bookrecservice --network microdemo-network deors/deors.demos.microservices.bookrecservice:latest
+    docker service ps bookrecservice
 
 launch bookrec-edgeservice and check the status
 
-    docker service create -p 8181:8181 -e "CONFIG_HOST=config-service" -e "EUREKA_HOST=eureka-service" --name bookrec-edgeservice --network microdemo-network deors/deors.demos.microservices.bookrecedgeservice:latest
-    docker service ps bookrec-edgeservice
+    docker service create -p 8181:8181 -e "CONFIG_HOST=configservice" -e "EUREKA_HOST=eurekaservice" --name bookrecedgeservice --network microdemo-network deors/deors.demos.microservices.bookrecedgeservice:latest
+    docker service ps bookrecedgeservice
+
+to quickly check whether all services are up and their configuration, use this command
+
+    docker service ls
 
 ### 2.5) test services in the swarm
 
