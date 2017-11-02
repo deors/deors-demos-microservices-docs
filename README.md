@@ -475,7 +475,23 @@ and to start it again
 
     docker-machine start docker-swarm-manager-1 docker-swarm-manager-2 docker-swarm-manager-3 docker-swarm-worker-1 docker-swarm-worker-2 docker-swarm-worker-3
 
-### 2.2) dockerize the services
+### 2.2) update Eureka configuration to leverage internal Swarm network
+
+when services are deployed inside Docker Swarm, there are multiple networks active in the running container; to be able to use correctly the client-side load balancing, each running instance must register in Eureka with the IP address corresponding to the internal network (and not the ingress network)
+
+move to bookrecservice folder, edit bootstrap.properties and add the following lines
+
+    spring.cloud.inetutils.preferredNetworks[0] = 192.168
+    spring.cloud.inetutils.preferredNetworks[1] = 10.0
+
+also move to bookrecedgeservice folder, edit bootstrap.properties and add the same lines
+
+    spring.cloud.inetutils.preferredNetworks[0] = 192.168
+    spring.cloud.inetutils.preferredNetworks[1] = 10.0
+
+with these changes, both services will register in Eureka with the right IP address, both when they are running standalone (192.168 network) and when they are running inside Docker Swarm (10.0 network)
+
+### 2.3) dockerize the services
 
 configure pom.xml and Dockerfile to allow each service to run as a Docker image
 
@@ -524,7 +540,7 @@ edit src\main\docker\Dockerfile
 
 repeat for the other projects (don't forget to update Jar file name in ADD command)
 
-### 2.3) creating the images
+### 2.4) creating the images
 
 launch the swarm (one machine is enough)
 
@@ -544,42 +560,42 @@ build and push images by running this command for each project
 
     mvn package docker:build -DpushImage
 
-### 2.4) running the images as services
+### 2.5) running the images as services
 
 create an overlay network for all the services
 
-    docker network create -d overlay microdemo-network
+    docker network create -d overlay microdemonet
 
 launch configservice and check the status
 
-    docker service create -p 8888:8888 --name configservice --network microdemo-network deors/deors.demos.microservices.configservice:latest
+    docker service create -p 8888:8888 --name configservice --network microdemonet deors/deors.demos.microservices.configservice:latest
     docker service ps configservice
 
 launch eurekaservice and check the status
 
-    docker service create -p 7878:7878 -e "HOSTNAME=eurekaservice" -e "CONFIG_HOST=configservice" --name eurekaservice --network microdemo-network deors/deors.demos.microservices.eurekaservice:latest
+    docker service create -p 7878:7878 --name eurekaservice --network microdemonet -e "CONFIG_HOST=configservice" deors/deors.demos.microservices.eurekaservice:latest
     docker service ps eurekaservice
 
-launch hystrix-dashboard and check the status
+launch hystrixdashboard and check the status
 
-    docker service create -p 7979:7979 -e "CONFIG_HOST=configservice" --name hystrixdashboard --network microdemo-network deors/deors.demos.microservices.hystrixdashboard:latest
+    docker service create -p 7979:7979 --name hystrixdashboard --network microdemonet -e "CONFIG_HOST=configservice" deors/deors.demos.microservices.hystrixdashboard:latest
     docker service ps hystrixdashboard
 
-launch bookrec-service and check the status
+launch bookrecservice and check the status
 
-    docker service create -p 8080:8080 -e "CONFIG_HOST=configservice" -e "EUREKA_HOST=eurekaservice" --name bookrecservice --network microdemo-network deors/deors.demos.microservices.bookrecservice:latest
+    docker service create -p 8080:8080 --name bookrecservice --network microdemonet -e "CONFIG_HOST=configservice" -e "EUREKA_HOST=eurekaservice" deors/deors.demos.microservices.bookrecservice:latest
     docker service ps bookrecservice
 
-launch bookrec-edgeservice and check the status
+launch bookrecedgeservice and check the status
 
-    docker service create -p 8181:8181 -e "CONFIG_HOST=configservice" -e "EUREKA_HOST=eurekaservice" --name bookrecedgeservice --network microdemo-network deors/deors.demos.microservices.bookrecedgeservice:latest
+    docker service create -p 8181:8181 --name bookrecedgeservice --network microdemonet -e "CONFIG_HOST=configservice" -e "EUREKA_HOST=eurekaservice" deors/deors.demos.microservices.bookrecedgeservice:latest
     docker service ps bookrecedgeservice
 
 to quickly check whether all services are up and their configuration, use this command
 
     docker service ls
 
-### 2.5) test services in the swarm
+### 2.6) test services in the swarm
 
 access the config service through one the actuator endpoints (it is currently unsecured)
 
@@ -620,13 +636,13 @@ registering this URL in the dashboard (and optionally configuring the delay and 
 
 once registered, try again to access the edge service, with and without the inner service up and running, and experiment how thresholds (number of errors in a short period of time) impact the opening and closing of the circuit between the inner and the edge service
 
-### 2.6) scale the book recommendation service
+### 2.7) scale out the book recommendation service
 
-ask Docker to scale the service
+ask Docker to scale out the book recommendation service
 
-    docker service scale bookrec-service=3
+    docker service scale bookrecservice=3
 
-### 2.7) make updates and roll the changes without service downtime
+### 2.8) make updates and roll the changes without service downtime
 
 make some change and deploy a rolling update;
 for example change text string in BookController class stored here: src\main\java\deors\demos\microservices\BookController.java
@@ -638,11 +654,11 @@ rebuild and push the new image to the registry
 deploy the change;
 a label is needed to ensure the new version of 'latest' image is downloaded from registry
 
-    docker service update --container-label-add update_cause="change" --update-delay 30s --image deors/deors.demos.microservices.bookrecservice:latest bookrec-service
+    docker service update --container-label-add update_cause="change" --update-delay 30s --image deors/deors.demos.microservices.bookrecservice:latest bookrecservice
 
 check how the change is deployed
 
-    docker service ps bookrec-service
+    docker service ps bookrecservice
 
 ## appendixes
 
@@ -650,10 +666,7 @@ check how the change is deployed
 
 remove running services
 
-    docker service rm config-service
-    docker service rm eureka-service
-    docker service rm hystrix-dashboard
-    docker service rm bookrec-service
+    docker service rm configservice eurekaservice hystrixdashboard bookrecservice bookrecedgeservice
 
 verify they are all removed
 
@@ -671,6 +684,10 @@ when in Linux
     docker rm $(docker ps -a -q)
     docker rmi --force $(docker images -q)
 
+remove the nework inside swarm
+
+    docker network rm microdemonet
+
 stop the machines
 
     docker-machine stop docker-swarm-manager-1 docker-swarm-manager-2 docker-swarm-manager-3 docker-swarm-worker-1 docker-swarm-worker-2 docker-swarm-worker-3
@@ -686,3 +703,11 @@ if using more than one machine in the swarm, images must be published to Docker 
 to troubleshoot connectivity with curl in alpine-based images, install and use this way
 
     docker exec <container-id> apk add --update curl && curl <url>
+
+to check wich IP addresses are active in a container
+
+    docker exec <container-id> ifconfig -a
+
+to check the environment variables in a container
+
+    docker exec <container-id> env
