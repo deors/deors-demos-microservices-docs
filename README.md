@@ -552,6 +552,8 @@ also move to bookrecedgeservice folder, edit bootstrap.properties and add the sa
     spring.cloud.inetutils.preferredNetworks[0] = 192.168
     spring.cloud.inetutils.preferredNetworks[1] = 10.0
 
+finally, do the same for eurekaservice and hystrixservice; in general, this must be done in every service which is going to register in Eureka
+
 with these changes, both services will register in Eureka with the right IP address, both when they are running standalone (192.168 network) and when they are running inside Docker Swarm (10.0 network)
 
 ### 2.3) configure Docker image build in Maven and create the Dockerfiles
